@@ -7,8 +7,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -19,7 +21,6 @@ import android.widget.Toast;
 
 import com.example.mychat.adapters.ChatAdapter;
 import com.example.mychat.pojo.Message;
-import com.example.mychat.screens.RegistrationActivity;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
 import com.google.android.gms.tasks.Continuation;
@@ -38,7 +39,6 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -52,10 +52,11 @@ public class ChatActivity extends AppCompatActivity {
     private ImageView imageViewAddImage;
     private ChatAdapter adapter;
     private FirebaseFirestore database;
-    private String tempAuthor = "жопа";
+    //private String author = "жопа";
     private FirebaseAuth mAuth;
     private FirebaseStorage storage;
     private StorageReference storageRef;
+    private SharedPreferences preferences;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -95,6 +96,7 @@ public class ChatActivity extends AppCompatActivity {
                         if(task.isSuccessful()){
                             Uri uri1 = task.getResult();
                             Toast.makeText(ChatActivity.this, uri1.toString(), Toast.LENGTH_SHORT).show();
+                            sendMessage(uri1.toString());
 
                             Log.i("myImage",uri1.toString());
                         }else {
@@ -117,7 +119,7 @@ public class ChatActivity extends AppCompatActivity {
                 // Successfully signed in
                 FirebaseUser user = mAuth.getCurrentUser();
                 if(user!=null){
-                    tempAuthor = user.getEmail();
+                    preferences.edit().putString("author", user.getEmail()).apply();
                     Toast.makeText(this, user.getEmail(), Toast.LENGTH_SHORT).show();
                 }
                 else {
@@ -148,6 +150,7 @@ public class ChatActivity extends AppCompatActivity {
                 if(value!=null) {
                     List<Message> messages = value.toObjects(Message.class);
                     adapter.setMessages(messages);
+                    recyclerViewChat.scrollToPosition(adapter.getItemCount()-1);
                 }
             }
         });
@@ -163,17 +166,18 @@ public class ChatActivity extends AppCompatActivity {
         imageViewSendMessage = findViewById(R.id.imageViewSendMessage);
         editTextMessage = findViewById(R.id.editTextMessage);
         imageViewAddImage = findViewById(R.id.imageViewAddImage);
-        adapter = new ChatAdapter();
+        adapter = new ChatAdapter(this);
         recyclerViewChat.setLayoutManager(new LinearLayoutManager(this,RecyclerView.VERTICAL,false));
         recyclerViewChat.setAdapter(adapter);
         database = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
         storage = FirebaseStorage.getInstance();
         storageRef= storage.getReference();
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
         imageViewSendMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                sendMessage();
+                sendMessage(null);
             }
         });
         imageViewAddImage.setOnClickListener(new View.OnClickListener() {
@@ -191,19 +195,24 @@ public class ChatActivity extends AppCompatActivity {
 
         if(mAuth.getCurrentUser()==null){
             goToRegistration();
+        }else {
+            preferences.edit().putString("author",mAuth.getCurrentUser().getEmail()).apply();
         }
 
 
     }
 
-    private void sendMessage(){
+    private void sendMessage(String urlToImage){
         String mess = editTextMessage.getText().toString().trim();
-        if(mess.isEmpty()){
-            Toast.makeText(this, "Вы не ввели сообщение", Toast.LENGTH_SHORT).show();
-            return;
+        Message message = null;
+        String author = preferences.getString("author","anon");
+        if(mess!=null && !mess.isEmpty()){
+            message = new Message(author,mess,System.currentTimeMillis(),null);
+        }else if(urlToImage!=null && !urlToImage.isEmpty()){
+            message = new Message(author,null,System.currentTimeMillis(),urlToImage);
         }
 
-        database.collection("messages").add(new Message(tempAuthor,mess,System.currentTimeMillis())).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
+        database.collection("messages").add(message).addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
             @Override
             public void onSuccess(DocumentReference documentReference) {
                 editTextMessage.getText().clear();

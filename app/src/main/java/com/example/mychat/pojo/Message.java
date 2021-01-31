@@ -4,11 +4,13 @@ public class Message {
     private String author;
     private String textOfMessage;
     private long date;
+    private String urlImage;
 
-    public Message(String author, String textOfMessage, long date) {
+    public Message(String author, String textOfMessage, long date,String urlImage) {
         this.author = author;
         this.textOfMessage = textOfMessage;
         this.date = date;
+        this.urlImage = urlImage;
     }
     public Message(){}
 
@@ -34,5 +36,13 @@ public class Message {
 
     public void setDate(long date) {
         this.date = date;
+    }
+
+    public String getUrlImage() {
+        return urlImage;
+    }
+
+    public void setUrlImage(String urlImage) {
+        this.urlImage = urlImage;
     }
 }
