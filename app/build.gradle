@@ -46,6 +46,9 @@ dependencies {
     // When using the BoM, you don't specify versions in Firebase library dependencies
     implementation 'com.google.firebase:firebase-firestore'
     implementation "androidx.multidex:multidex:2.0.1"
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.firebaseui:firebase-ui-auth:6.4.0'
+
 
 }
 apply plugin: 'com.android.application'
