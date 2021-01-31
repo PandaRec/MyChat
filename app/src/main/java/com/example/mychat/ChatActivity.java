@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -21,6 +22,7 @@ import com.example.mychat.pojo.Message;
 import com.example.mychat.screens.RegistrationActivity;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.IdpResponse;
+import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -32,6 +34,9 @@ import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +54,8 @@ public class ChatActivity extends AppCompatActivity {
     private FirebaseFirestore database;
     private String tempAuthor = "жопа";
     private FirebaseAuth mAuth;
+    private FirebaseStorage storage;
+    private StorageReference storageRef;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -72,6 +79,30 @@ public class ChatActivity extends AppCompatActivity {
         if(requestCode==RC_IMAGE_SEND && resultCode==RESULT_OK){
             if(data!=null) {
                 Uri uri = data.getData();
+
+                final StorageReference referenceToImage = storageRef.child("images/"+uri.getLastPathSegment());
+                referenceToImage.putFile(uri).continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                    @Override
+                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                        if(!task.isSuccessful()){
+                            Toast.makeText(ChatActivity.this, "Error", Toast.LENGTH_SHORT).show();
+                        }
+                        return referenceToImage.getDownloadUrl();
+                    }
+                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Uri> task) {
+                        if(task.isSuccessful()){
+                            Uri uri1 = task.getResult();
+                            Toast.makeText(ChatActivity.this, uri1.toString(), Toast.LENGTH_SHORT).show();
+
+                            Log.i("myImage",uri1.toString());
+                        }else {
+
+                        }
+                    }
+                });
+
                 Toast.makeText(this, "" + uri, Toast.LENGTH_SHORT).show();
             }else {
                 Toast.makeText(this, "data is empty", Toast.LENGTH_SHORT).show();
@@ -137,6 +168,8 @@ public class ChatActivity extends AppCompatActivity {
         recyclerViewChat.setAdapter(adapter);
         database = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
+        storage = FirebaseStorage.getInstance();
+        storageRef= storage.getReference();
         imageViewSendMessage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
